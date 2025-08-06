@@ -1,0 +1,35 @@
+name: ai_reading_companion
+description: "An AI-powered reading assistant."
+publish_to: 'none' 
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.4 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # Core packages
+  flutter_riverpod: ^2.5.1
+  http: ^1.2.1
+  
+  # For secrets
+  flutter_dotenv: ^5.1.0
+
+  # --- NEW PACKAGES ---
+  # For picking files from the device
+  file_picker: ^8.0.5
+  # For reading and extracting text from PDF files
+  syncfusion_flutter_pdf: ^26.1.35
+
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - .env
