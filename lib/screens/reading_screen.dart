@@ -8,7 +8,6 @@ class ReadingScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Listen for when a PDF file is successfully picked
     ref.listen<ReadingState>(readingNotifierProvider, (previous, next) {
       if (next.pickedPdfFile != null &&
           previous?.pickedPdfFile != next.pickedPdfFile) {
@@ -46,7 +45,6 @@ class ReadingScreen extends ConsumerWidget {
                     const SizedBox(height: 40),
                     ElevatedButton.icon(
                       onPressed: () {
-                        // Call the updated function name
                         ref.read(readingNotifierProvider.notifier).pickPdf();
                       },
                       icon: const Icon(Icons.upload_file),
