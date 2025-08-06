@@ -1,100 +1,110 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:syncfusion_flutter_pdf/pdf.dart';
+import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import '../providers/reading_provider.dart';
 
-class DocumentViewerScreen extends ConsumerWidget {
+class DocumentViewerScreen extends ConsumerStatefulWidget {
   const DocumentViewerScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // Get the full document text from the provider
-    final documentText =
-        ref.watch(readingNotifierProvider.select((s) => s.documentText));
-    final explanationState =
-        ref.watch(readingNotifierProvider.select((s) => s.explanation));
+  ConsumerState<DocumentViewerScreen> createState() =>
+      _DocumentViewerScreenState();
+}
+
+class _DocumentViewerScreenState extends ConsumerState<DocumentViewerScreen> {
+  late final PdfViewerController _pdfViewerController;
+  String _fullDocumentText = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _pdfViewerController = PdfViewerController();
+  }
+
+  // This function shows the explanation in a pop-up from the bottom.
+  void _showExplanationSheet(String selectedText) {
+    // We pass the full document text to the provider for better context.
+    ref.read(readingNotifierProvider.notifier).getExplanationForSelection(
+          term: selectedText,
+          fullText: _fullDocumentText,
+        );
+
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return Consumer(
+          builder: (context, ref, child) {
+            final explanationState =
+                ref.watch(readingNotifierProvider.select((s) => s.explanation));
+            return Container(
+              padding: const EdgeInsets.all(24.0),
+              width: double.infinity,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Explanation for: "$selectedText"',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 18),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const Divider(height: 20),
+                  Flexible(
+                    child: SingleChildScrollView(
+                      child: explanationState.when(
+                        data: (text) =>
+                            Text(text, style: const TextStyle(fontSize: 16)),
+                        loading: () =>
+                            const Center(child: CircularProgressIndicator()),
+                        error: (e, st) => Text('Error: $e',
+                            style: const TextStyle(color: Colors.red)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pdfFile =
+        ref.watch(readingNotifierProvider.select((s) => s.pickedPdfFile));
+
+    if (pdfFile == null) {
+      return Scaffold(
+        appBar: AppBar(),
+        body: const Center(child: Text("No PDF file selected.")),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Document Viewer'),
       ),
-      body: Column(
-        children: [
-          // Top part: The interactive text viewer
-          Expanded(
-            flex: 3, // Takes 3/4 of the screen height
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: SingleChildScrollView(
-                child: SelectableText(
-                  documentText,
-                  style: const TextStyle(fontSize: 18, height: 1.6),
-                  // This is where the magic happens!
-                  // We define a custom toolbar that appears when text is selected.
-                  toolbarOptions: const ToolbarOptions(
-                    copy: true,
-                    selectAll: true,
-                  ),
-                  contextMenuBuilder: (context, editableTextState) {
-                    return AdaptiveTextSelectionToolbar.buttonItems(
-                      anchors: editableTextState.contextMenuAnchors,
-                      buttonItems: [
-                        ...editableTextState.contextMenuButtonItems,
-                        ContextMenuButtonItem(
-                          onPressed: () {
-                            // Get the selected text and call the provider
-                            final selection =
-                                editableTextState.textEditingValue.selection;
-                            final selectedText = editableTextState
-                                .textEditingValue.text
-                                .substring(selection.start, selection.end);
-                            ref
-                                .read(readingNotifierProvider.notifier)
-                                .getExplanationForSelection(term: selectedText);
-                            // Hide the toolbar
-                            editableTextState.hideToolbar();
-                          },
-                          label: 'Explain',
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ),
-            ),
-          ),
-          // Bottom part: The explanation box
-          Expanded(
-            flex: 2, // Takes 2/4 of the screen height
-            child: Container(
-              width: double.infinity,
-              color: Colors.black.withValues(alpha: 0.2),
-              padding: const EdgeInsets.all(16.0),
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Explanation:',
-                      style:
-                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 10),
-                    explanationState.when(
-                      data: (text) =>
-                          Text(text, style: const TextStyle(fontSize: 16)),
-                      loading: () =>
-                          const Center(child: CircularProgressIndicator()),
-                      error: (e, st) => Text(
-                        'An error occurred: $e',
-                        style: const TextStyle(color: Colors.red, fontSize: 16),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
+      body: SfPdfViewer.file(
+        pdfFile,
+        controller: _pdfViewerController,
+        // This is the key! It gets called when the document is fully loaded.
+        onDocumentLoaded: (PdfDocumentLoadedDetails details) async {
+          // We extract the text once here to use for context in our API calls.
+          _fullDocumentText = PdfTextExtractor(details.document).extractText();
+        },
+        // And this gets called whenever the user selects text.
+        onTextSelectionChanged: (PdfTextSelectionChangedDetails details) {
+          if (details.selectedText != null &&
+              details.selectedText!.trim().isNotEmpty) {
+            // When text is selected, show our explanation sheet.
+            _showExplanationSheet(details.selectedText!);
+          }
+        },
       ),
     );
   }

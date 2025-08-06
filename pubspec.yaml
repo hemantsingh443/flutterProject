@@ -17,11 +17,13 @@ dependencies:
   # For secrets
   flutter_dotenv: ^5.1.0
 
-  # --- NEW PACKAGES ---
   # For picking files from the device
   file_picker: ^8.0.5
-  # For reading and extracting text from PDF files
-  syncfusion_flutter_pdf: ^26.1.35
+
+  # For viewing and interacting with PDF files
+  syncfusion_flutter_pdfviewer: ^27.1.1
+  # For processing the PDF document (like text extraction)
+  syncfusion_flutter_pdf: ^27.1.1
 
 
 dev_dependencies:
